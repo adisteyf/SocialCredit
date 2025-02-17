@@ -1,8 +1,4 @@
-rating:
-  Adisteyf: 42
-
+rating: {}
 votes:
-  Adisteyf:
-    Adisteyf: true
 
 def_val: 10

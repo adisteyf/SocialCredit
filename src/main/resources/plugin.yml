@@ -9,7 +9,7 @@ commands:
     usage:
   +rep:
     description: Добавить игроку рейтинг (+1)
-    usage: /<command> [ник]
+    usage:
   -rep:
     description: Убавить игроку рейтинг (-1)
-    usage: /<command> [ник]
+    usage:
