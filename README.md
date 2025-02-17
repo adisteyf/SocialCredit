@@ -1,0 +1,3 @@
+# SocialCredit
+
+Plugin for **Minecraft**.

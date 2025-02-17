@@ -1,0 +1,15 @@
+name: SocialCredit
+main: com.sc.socialcredit.Main
+description: SocialCredit - plugin for rating. by Adisteyf (adk.)
+author: Adisteyf
+version: 1.0
+commands:
+  sc:
+    description: Просмотр рейтинга игроков
+    usage:
+  +rep:
+    description: Добавить игроку рейтинг (+1)
+    usage: /<command> [ник]
+  -rep:
+    description: Убавить игроку рейтинг (-1)
+    usage: /<command> [ник]
