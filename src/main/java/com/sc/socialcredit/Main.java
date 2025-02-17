@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 public class Main extends JavaPlugin implements CommandExecutor {
 
     private final Map<String, Integer> socialCredits = new HashMap<>();
+    private final Map<String, Map<String, Boolean>> hasVoted = new HashMap<>();
+    public int def_val = 10;
 
     @Override
     public void onEnable() {
@@ -24,7 +26,28 @@ public class Main extends JavaPlugin implements CommandExecutor {
         this.getCommand("+rep").setExecutor(this);
         this.getCommand("-rep").setExecutor(this);
 
-        socialCredits.put("Adisteyf", 42);
+        load();
+    }
+
+    public void load() {
+        this.reloadConfig();
+
+        for (String key : getConfig().getConfigurationSection("rating").getKeys(false)) {
+            socialCredits.put(key, getConfig().getInt("rating." + key));
+        }
+
+        for (String voter : getConfig().getConfigurationSection("votes").getKeys(false)) {
+            if (getConfig().contains("votes." + voter)) {
+                for (String targetPlayer : getConfig().getConfigurationSection("votes." + voter).getKeys(false)) {
+                    boolean votedForRep = getConfig().getBoolean("votes." + voter + "." + targetPlayer);
+
+                    hasVoted.putIfAbsent(voter, new HashMap<>());
+                    hasVoted.get(voter).put(targetPlayer, votedForRep);
+                }
+            }
+        }
+
+        def_val = getConfig().getInt("def_val");
     }
 
     @Override
@@ -69,30 +92,65 @@ public class Main extends JavaPlugin implements CommandExecutor {
         return count + " " + word;
     }
 
-    public boolean plusrepCommandChecker(String[] args, CommandSender sender, Command cmd) {
-        if (!cmd.getName().equalsIgnoreCase("+rep") || args.length != 1) return false;
-
-        if (sender instanceof Player) {
-            String targetPlayer = args[0];
-            socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, 0) +1);
-            int scs = socialCredits.get(args[0]);
-            sender.sendMessage(ChatColor.YELLOW+ "У игрока " +ChatColor.RESET + args[0] + ChatColor.YELLOW+ " теперь " +ChatColor.RESET+ getDeclension(scs) +ChatColor.RESET);
-        }
-
-        return false;
-    }
-
     public boolean minusrepCommandChecker(String[] args, CommandSender sender, Command cmd) {
         if (!cmd.getName().equalsIgnoreCase("-rep") || args.length != 1) return false;
 
         if (sender instanceof Player) {
             String targetPlayer = args[0];
-            socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, 0) -1);
-            int scs = socialCredits.get(args[0]);
-            sender.sendMessage(ChatColor.YELLOW+ "У игрока " +ChatColor.RESET + args[0] + ChatColor.YELLOW+ " теперь " +ChatColor.RESET+ getDeclension(scs) +ChatColor.RESET);
+            String voter = sender.getName();
+
+            if (hasVoted.containsKey(voter) && hasVoted.get(voter).containsKey(targetPlayer) && !hasVoted.get(voter).get(targetPlayer)) {
+                sender.sendMessage(ChatColor.RED + "Вы уже проголосовали за " + targetPlayer + ". Вы можете проголосовать только за +rep.");
+                return true;
+            }
+
+            socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, def_val) - 1);
+            if (hasVoted.containsKey(voter) && hasVoted.get(voter).containsKey(targetPlayer) && hasVoted.get(voter).get(targetPlayer)) {
+                socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, def_val) - 1);
+            }
+
+            int scs = socialCredits.get(targetPlayer);
+            sender.sendMessage(ChatColor.YELLOW + "У игрока " + ChatColor.RESET + targetPlayer + ChatColor.YELLOW + " теперь " + ChatColor.RESET + getDeclension(scs) + ChatColor.RESET);
+
+            hasVoted.putIfAbsent(voter, new HashMap<>());
+            hasVoted.get(voter).put(targetPlayer, false); // false для -rep
+
+            getConfig().set("votes." + voter + "." + targetPlayer, false);
+            saveConfig();
         }
 
-        return false;
+        return true;
+    }
+
+    public boolean plusrepCommandChecker(String[] args, CommandSender sender, Command cmd) {
+        if (!cmd.getName().equalsIgnoreCase("+rep") || args.length != 1) return false;
+
+        if (sender instanceof Player) {
+            String targetPlayer = args[0];
+            String voter = sender.getName();
+
+            if (hasVoted.containsKey(voter) && hasVoted.get(voter).containsKey(targetPlayer) && hasVoted.get(voter).get(targetPlayer)) {
+                sender.sendMessage(ChatColor.RED + "Вы уже проголосовали за " + targetPlayer + ". Вы можете проголосовать только за -rep.");
+                return true;
+            }
+
+            // Уменьшаем социальные кредиты
+            socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, def_val) + 1);
+            if (hasVoted.containsKey(voter) && hasVoted.get(voter).containsKey(targetPlayer) && !hasVoted.get(voter).get(targetPlayer)) {
+                socialCredits.put(targetPlayer, socialCredits.getOrDefault(targetPlayer, def_val) + 1);
+            }
+
+            int scs = socialCredits.get(targetPlayer);
+            sender.sendMessage(ChatColor.YELLOW + "У игрока " + ChatColor.RESET + targetPlayer + ChatColor.YELLOW + " теперь " + ChatColor.RESET + getDeclension(scs) + ChatColor.RESET);
+
+            hasVoted.putIfAbsent(voter, new HashMap<>());
+            hasVoted.get(voter).put(targetPlayer, true); // true для +rep
+
+            getConfig().set("votes." + voter + "." + targetPlayer, true);
+            saveConfig();
+        }
+
+        return true;
     }
 
     private void showTopPlayers(CommandSender sender) {
